@@ -11,13 +11,17 @@ import HowItWorks from "@/components/how-it-works"
 import AboutProject from "@/components/about-project"
 import Footer from "@/components/footer"
 
+const API_BASE_URL = "http://localhost:8000"
+
 export default function Home() {
   const [uploadedImage, setUploadedImage] = useState<string | null>(null)
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [result, setResult] = useState<{
     status: "real" | "ai-generated"
     confidence: number
   } | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   const [activeTab, setActiveTab] = useState<"image" | "text">("image")
 
@@ -25,41 +29,83 @@ export default function Home() {
     const reader = new FileReader()
     reader.onload = (e) => {
       setUploadedImage(e.target?.result as string)
+      setUploadedFile(file)
       setResult(null)
+      setError(null)
     }
     reader.readAsDataURL(file)
   }
 
   const handleAnalyzeImage = async () => {
-    if (!uploadedImage) return
-
-    setIsAnalyzing(true)
-
-    // Placeholder function - replace with actual API call
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-
-    const mockResult = {
-      status: Math.random() > 0.5 ? "ai-generated" : ("real" as const),
-      confidence: Math.round((0.75 + Math.random() * 0.24) * 100),
+    if (!uploadedFile) {
+      setError("Please upload an image first")
+      return
     }
 
-    setResult(mockResult)
-    setIsAnalyzing(false)
+    setIsAnalyzing(true)
+    setError(null)
+
+    try {
+      const formData = new FormData()
+      formData.append("file", uploadedFile)
+
+      const response = await fetch(`${API_BASE_URL}/analyze/image`, {
+        method: "POST",
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || "Failed to analyze image")
+      }
+
+      const data = await response.json()
+      setResult({
+        status: data.status,
+        confidence: data.confidence,
+      })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to analyze image. Please check if the backend is running.")
+      console.error("Image analysis error:", err)
+    } finally {
+      setIsAnalyzing(false)
+    }
   }
 
   const handleAnalyzeText = async (text: string) => {
-    setIsAnalyzing(true)
-
-    // Placeholder function - replace with actual API call
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-
-    const mockResult = {
-      status: Math.random() > 0.5 ? "ai-generated" : ("real" as const),
-      confidence: Math.round((0.75 + Math.random() * 0.24) * 100),
+    if (text.length < 50) {
+      setError("Text must be at least 50 characters long")
+      return
     }
 
-    setResult(mockResult)
-    setIsAnalyzing(false)
+    setIsAnalyzing(true)
+    setError(null)
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/analyze/text`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ text }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || "Failed to analyze text")
+      }
+
+      const data = await response.json()
+      setResult({
+        status: data.status,
+        confidence: data.confidence,
+      })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to analyze text. Please check if the backend is running.")
+      console.error("Text analysis error:", err)
+    } finally {
+      setIsAnalyzing(false)
+    }
   }
 
   return (
@@ -75,6 +121,8 @@ export default function Home() {
               setActiveTab("image")
               setResult(null)
               setUploadedImage(null)
+              setUploadedFile(null)
+              setError(null)
             }}
             variant={activeTab === "image" ? "default" : "outline"}
             className={activeTab === "image" ? "bg-primary text-primary-foreground glow-neon" : ""}
@@ -85,6 +133,7 @@ export default function Home() {
             onClick={() => {
               setActiveTab("text")
               setResult(null)
+              setError(null)
             }}
             variant={activeTab === "text" ? "default" : "outline"}
             className={activeTab === "text" ? "bg-secondary text-secondary-foreground glow-blue" : ""}
@@ -92,6 +141,12 @@ export default function Home() {
             Text Detector
           </Button>
         </div>
+
+        {error && (
+          <div className="max-w-2xl mx-auto mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-500 text-center">
+            {error}
+          </div>
+        )}
 
         {activeTab === "image" && (
           <>
