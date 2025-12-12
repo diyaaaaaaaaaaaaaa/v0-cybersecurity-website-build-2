@@ -9,7 +9,7 @@ const _geistMono = Geist_Mono({ subsets: ["latin"] })
 const spaceGrotesk = Space_Grotesk({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "CyberScan - AI Image Authenticity Analyzer",
+  title: "DeepShield - AI Image Authenticity Analyzer",
   description: "Upload any image to check if it is AI-generated or real using advanced detection algorithms.",
   generator: "v0.app",
   icons: {
